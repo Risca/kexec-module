@@ -6,11 +6,16 @@
 #include <asm/uaccess.h>
 #include <linux/kexec.h>
 #include <linux/kallsyms.h>
+#include <linux/string.h>
+
+int nx_enabled = 0;
 
 static void (*machine_shutdown_ptr)(void);
 static void (*kernel_restart_prepare_ptr)(char*);
+#ifdef CONFIG_ARM
 static void (*soft_restart_ptr)(unsigned long);
 static int  (*memblock_is_region_memory_ptr)(phys_addr_t, phys_addr_t);
+#endif
 
 void machine_shutdown(void)
 {
@@ -20,6 +25,7 @@ void kernel_restart_prepare(char *cmd)
 {
 	kernel_restart_prepare_ptr(cmd);
 }
+#ifdef CONFIG_ARM
 void soft_restart(unsigned long addr)
 {
 	soft_restart_ptr(addr);
@@ -28,7 +34,7 @@ int memblock_is_region_memory(phys_addr_t base, phys_addr_t size)
 {
 	return memblock_is_region_memory_ptr(base, size);
 }
-
+#endif
 static long kexecmod_ioctl(struct file *file, unsigned req, unsigned long arg)
 {
 	struct {
@@ -55,7 +61,16 @@ static const struct file_operations fops = {
 
 static void *ksym(const char *name)
 {
-	return (void *)kallsyms_lookup_name(name);
+	// grep machine_shutdown /proc/kallsyms
+	if (strcmp(name, "machine_shutdown") == 0) {
+		return (void*)0xc010ca41;
+	}
+	else if (strcmp(name, "kernel_restart_prepare") == 0) {
+		return (void*)0xc0121bec;
+	}
+	else {
+		return NULL;
+	}
 }
 
 static int __init
@@ -64,6 +79,7 @@ kexecmod_init(void)
 	int maj;
 	struct class *class;
 	struct device *device;
+
 	if (!(machine_shutdown_ptr = ksym("machine_shutdown"))
 #ifdef CONFIG_ARM
 	    //|| !(machine_shutdown_ptr = ksym("disable_nonboot_cpus"))
@@ -82,6 +98,7 @@ kexecmod_init(void)
 	device = device_create(class, 0, MKDEV(maj, 0), 0, "kexec");
 	if (IS_ERR(device))
 		return PTR_ERR(device);
+	printk(KERN_INFO "kexec module loaded\n");
 	return 0;
 }
 

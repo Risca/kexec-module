@@ -1,11 +1,19 @@
 KDIR ?= /lib/modules/`uname -r`/build
-ARCH ?= arm
 
-default: orig
+sources := orig/relocate_kernel.S orig/machine_kexec.c orig/kexec.c
+
+.PHONY:
+default: ${sources}
 	$(MAKE) -C $(KDIR) M=$$PWD
 
 orig:
 	mkdir $@
-	ln -s $(KDIR)/arch/$(ARCH)/kernel/relocate_kernel.S
-	ln -s $(KDIR)/arch/$(ARCH)/kernel/machine_kexec.c $@/
-	ln -s $(KDIR)/kernel/kexec.c $@/
+
+orig/relocate_kernel.S:
+	ln -fs $(KDIR)/arch/x86/kernel/relocate_kernel_32.S $@
+
+orig/machine_kexec.c: | orig
+	ln -fs $(KDIR)/arch/x86/kernel/machine_kexec_32.c $@
+
+orig/kexec.c: | orig
+	ln -fs $(KDIR)/kernel/kexec.c $@
