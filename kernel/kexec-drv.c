@@ -63,10 +63,10 @@ static void *ksym(const char *name)
 {
 	// grep machine_shutdown /proc/kallsyms
 	if (strcmp(name, "machine_shutdown") == 0) {
-		return (void*)0xc010ca41;
+		return (void*)0xc010e6c9;
 	}
 	else if (strcmp(name, "kernel_restart_prepare") == 0) {
-		return (void*)0xc0121bec;
+		return (void*)0xc0126855;
 	}
 	else {
 		return NULL;
